@@ -14,7 +14,7 @@ typedef keyvalue_s keyvalue_t;
 typedef void(*PFN_SPAWN)(void* ent);
 typedef void(*PFN_ACTIVATE)(void* ent);
 typedef void(*PFN_TICK)(void* tick);
-typedef void(*PFN_KEYVALUE)(keyvalue_t* keyValues, size_t keyValueCount);
+typedef void(*PFN_KEYVALUE)(void* ent, keyvalue_t* keyValues, size_t keyValueCount);
 
 #define DEFINE_BASE_ENT_VARS() \
     uint32_t index; \
@@ -26,7 +26,6 @@ typedef void(*PFN_KEYVALUE)(keyvalue_t* keyValues, size_t keyValueCount);
     vec3s position; \
     vec3s rotation; \
     vec3s scale;
-#endif
 
 typedef struct
 {
@@ -34,3 +33,5 @@ typedef struct
 } ent_s;
 
 typedef ent_s ent_t;
+
+#endif

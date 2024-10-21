@@ -2,7 +2,7 @@
 #define ENT_H
 
 #include <cglm/struct/vec3.h>
-#include <util/string_allocator/string_allocator.h>
+#include <util/string_t.h>
 
 typedef struct {
     string_t key;
@@ -12,7 +12,6 @@ typedef struct {
 typedef keyvalue_s keyvalue_t;
 
 typedef void(*PFN_SPAWN)(void* ent);
-typedef void(*PFN_ACTIVATE)(void* ent);
 typedef void(*PFN_TICK)(void* tick);
 typedef void(*PFN_KEYVALUE)(void* ent, keyvalue_t* keyValues, size_t keyValueCount);
 
@@ -20,7 +19,6 @@ typedef void(*PFN_KEYVALUE)(void* ent, keyvalue_t* keyValues, size_t keyValueCou
     uint32_t index; \
     string_t typeHierarchy; \
     PFN_SPAWN pfnSpawn; \
-    PFN_ACTIVATE pfnActivate; \
     PFN_TICK pfnTick; \
     PFN_KEYVALUE pfnKeyValue; \
     vec3s position; \

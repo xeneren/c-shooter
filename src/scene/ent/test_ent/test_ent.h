@@ -6,7 +6,7 @@
 
 #define DEFINE_TEST_ENT_VARS() \
     DEFINE_BASE_ENT_VARS() \
-    string_t test;
+    int test;
 
 typedef struct
 {
@@ -19,7 +19,6 @@ size_t TestEnt_GetSize();
 void TestEnt_Set(test_ent_t* ent, BOOL setPFN);
 
 void TestEnt_Spawn(test_ent_t* ent);
-void TestEnt_Activate(test_ent_t* ent);
 void TestEnt_Tick(test_ent_t* ent);
 void TestEnt_KeyValue(test_ent_t* ent, keyvalue_t* keyValues, size_t keyValueCount);
 

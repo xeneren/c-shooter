@@ -1,148 +1,200 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL.h>
+#include <SDL_image.h>
 #include <glad/glad.h>
 #include "util/util.h"
+#include <direct.h>
+#include <cglm/struct/vec2.h>
+#include <input/input.h>
 
-void printBytes(int8_t* bytes, size_t count) {
-    for(size_t i = 0; i < count; i++) {
-        printf("%c", bytes[i]);
-    }
-    printf("\n");
+float vertices[] = {
+     0.0f,  0.0f, 0.0f, 1.0f, 0.0f,  // top right
+     0.0f, -1.0f, 0.0f, 1.0f, 1.0f,  // bottom right
+    -1.0, -1.0f, 0.0f, 0.0f, 1.0f,  // bottom left
+    -1.0,  0.0f, 0.0f, 0.0f, 0.0f   // top left 
+};
+unsigned int indices[] = {  // note that we start from 0!
+    0, 1, 3,   // first triangle
+    1, 2, 3    // second triangle
+};
+
+char infoLog[512];
+int32_t success;
+
+float remap(float value, float oldMin, float oldMax, float newMin, float newMax) {
+    return (value - oldMin) / (oldMax - oldMin) * (newMax - newMin) + newMin;
 }
 
 int main(void) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("%s\n", SDL_GetError());
+        Util_PrintMessage("%s", UTIL_MESSAGE_TYPE_FATAL, SDL_GetError());
         return -1;
     }
-
-    SDL_Window* window = SDL_CreateWindow("Test window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900, SDL_WINDOW_OPENGL);
+    
+    SDL_Window* window = SDL_CreateWindow("CShooter", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900, SDL_WINDOW_OPENGL);
+    if (!window) {
+        Util_PrintMessage("%s", UTIL_MESSAGE_TYPE_FATAL, SDL_GetError());
+        return -1;
+    }
+    
     SDL_Surface* icon = IMG_Load("assets/logo.png");
-    SDL_SetWindowIcon(window, icon);
-    if(!window) {
-        printf("%s\n", SDL_GetError());
-        return -1;
+    if (icon) {
+        SDL_SetWindowIcon(window, icon);
     }
-
+    else {
+        Util_PrintMessage("%s\n", UTIL_MESSAGE_TYPE_ERROR, IMG_GetError());
+    }
+    
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, GL_TRUE);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-    SDL_GLContext openGLContext;
-    openGLContext = SDL_GL_CreateContext(window);
-    if(!openGLContext) {
-        printf("%s\n", SDL_GetError());
+    
+    SDL_GLContext openGLContext = SDL_GL_CreateContext(window);
+    if (!openGLContext) {
+        Util_PrintMessage("%s\n", UTIL_MESSAGE_TYPE_FATAL, SDL_GetError());
         return -1;
     }
-
-    if(!oglgladLoadGLLoader(SDL_GL_GetProcAddress)) {
-        printf("GLAD failed to init!\n");
-        return -1;
-    }
-    BOOL shouldNotQuit = true;
-    SDL_Event event;
 
     SDL_GL_SetSwapInterval(1);
 
-    char infoLog[512];
-    int success;
-
-    HeapData vertexData;
-    if(!Util_ReadFile("src-shader/baseVertex.vert", &vertexData, false)) {
-        printf("reading vertex shader failed!\n");
+    if (!oglgladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+        Util_PrintMessage("Failed to load glad!\n", UTIL_MESSAGE_TYPE_FATAL);
+    }
+    
+    HeapData vertexShaderCode;
+    if (!Util_ReadFile("src-shader/baseVertex.vert", &vertexShaderCode, false)) {
+        Util_PrintMessage("Failed to load vertex shader!\n", UTIL_MESSAGE_TYPE_FATAL);
         return -1;
     }
-    //printBytes(vertexData.bytes, vertexData.size);
     uint32_t vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    GLint vertexDataSize = (GLint) vertexData.size;
-    glShaderSource(vertexShader, 1, (const GLchar *const*) &vertexData.bytes, &vertexDataSize);
+    glShaderSource(vertexShader, 1, &vertexShaderCode.bytes, &vertexShaderCode.size);
     glCompileShader(vertexShader);
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success) {
+    if (!success) {
         glGetShaderInfoLog(vertexShader, sizeof(infoLog), NULL, infoLog);
-        printf("vertex shader compile failed:\n%s\n", infoLog);
+        Util_PrintMessage("Failed to compile vertex shader: %s\n", UTIL_MESSAGE_TYPE_FATAL, infoLog);
         return -1;
     }
+    free(vertexShaderCode.bytes);
 
-    HeapData pixelData;
-    if(!Util_ReadFile("src-shader/basePixel.frag", &pixelData, false)) {
-        printf("reading pixel shader failed!\n");
+    HeapData pixelShaderCode;
+    if (!Util_ReadFile("src-shader/basePixel.frag", &pixelShaderCode, false)) {
+        Util_PrintMessage("Failed to load pixel shader!\n", UTIL_MESSAGE_TYPE_FATAL);
         return -1;
     }
     uint32_t pixelShader = glCreateShader(GL_FRAGMENT_SHADER);
-    GLint pixelDataSize = (GLint) pixelData.size;
-    glShaderSource(pixelShader, 1, (const GLchar *const*) &pixelData.bytes, &pixelDataSize);
+    glShaderSource(pixelShader, 1, &pixelShaderCode.bytes, &pixelShaderCode.size);
     glCompileShader(pixelShader);
     glGetShaderiv(pixelShader, GL_COMPILE_STATUS, &success);
-    if(!success) {
+    if (!success) {
         glGetShaderInfoLog(pixelShader, sizeof(infoLog), NULL, infoLog);
-        printf("pixel shader compile failed:\n%s\n", infoLog);
+        Util_PrintMessage("Failed to compile pixel shader:\n%s\n", UTIL_MESSAGE_TYPE_FATAL, infoLog);
         return -1;
     }
+    free(pixelShaderCode.bytes);
+    SDL_Surface* convertedIcon = SDL_ConvertSurfaceFormat(icon, SDL_PIXELFORMAT_RGBA32, NULL);
+    if (!convertedIcon) {
+        Util_PrintMessage("Failed to convert texture:\n%s", UTIL_MESSAGE_TYPE_FATAL, SDL_GetError());
+        return -1;
+    }
+    SDL_FreeSurface(icon);
+    uint32_t texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, convertedIcon->w, convertedIcon->h, NULL, GL_RGBA, GL_UNSIGNED_BYTE, convertedIcon->pixels);
+    SDL_FreeSurface(convertedIcon);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    
 
     uint32_t shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, pixelShader);
     glLinkProgram(shaderProgram);
-
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success) {
+    if (!success) {
         glGetProgramInfoLog(shaderProgram, sizeof(infoLog), NULL, infoLog);
-        printf("shader program link failed:\n%s\n", infoLog);
+        Util_PrintMessage("Failed to link shader program:\n%s\n", UTIL_MESSAGE_TYPE_FATAL, infoLog);
         return -1;
     }
-
-    glUseProgram(shaderProgram);
 
     glDeleteShader(vertexShader);
     glDeleteShader(pixelShader);
 
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f,  0.5f, 0.0f
-    };
-
-    uint32_t VBO, VAO;
+    uint32_t VBO, EBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, NULL);
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (const void*)(sizeof(float) * 3));
+    glEnableVertexAttribArray(1);
 
-    glBindVertexArray(0); 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    glBindVertexArray(0);
 
-    while(shouldNotQuit) {
+    BOOL shouldNotQuit = true;
+    SDL_Event event;
+
+    int x;
+    int y;
+
+    BOOL mouseWheel = false;
+
+    while (shouldNotQuit) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        while (SDL_PollEvent(&event))
-        {
-            if(event.type == SDL_QUIT) {
-                printf("closing!\n");
-                shouldNotQuit = false;
-                break;
+        glClear(GL_COLOR_BUFFER_BIT);
+        
+        while (SDL_PollEvent(&event) != 0) {
+            switch (event.type) {
+                case SDL_QUIT:
+                    shouldNotQuit = false;
+                    break;
+                case SDL_MOUSEWHEEL:
+                    Input_CheckMouseWheel(event.wheel);
+                    mouseWheel = true;
+                    break;
+                default:
+                    break;
             }
         }
+        Input_PollStates();
+        if (!mouseWheel) {
+            Input_ResetMouseWheel();
+        }
+        else {
+            mouseWheel = false;
+        }
+
+
+        keystate_t mouse4 = Input_GetMouseButton(MOUSEBUTTON4);
+        keystate_t mouse5 = Input_GetMouseButton(MOUSEBUTTON5);
+        ivec2s mouseDelta = Input_GetMouseDelta();
+        vec2s mouseScrollDelta = Input_GetMouseWheelDelta();
+        
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
         SDL_GL_SwapWindow(window);
     }
-
-    SDL_GL_DeleteContext(openGLContext);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
 }

@@ -23,7 +23,8 @@ endif()
 
 endif()
 
-find_package(fmt CONFIG REQUIRED)
+find_package(SDL2 REQUIRED)
+find_package(SDL2_image REQUIRED)
 
 set(CSHOOTER_OUT_DIR "${CMAKE_SOURCE_DIR}/CShooter/bin/${CMAKE_BUILD_TYPE}/${CSHOOTER_PLATFORM}")
 
@@ -52,4 +53,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE thirdparty/cglm/include)
 
 target_include_directories(${PROJECT_NAME} PRIVATE depend )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL2::SDL2)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL2_image::SDL2_image)

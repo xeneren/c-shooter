@@ -35,23 +35,24 @@ BOOL Util_ReadFile(const char* path, HeapData* ret, BOOL binary) {
 }
 
 BOOL Util_PrintMessage(const char* fmt, UTIL_MESSAGE_TYPE msgType, ...) {
-    //TODO: make an actual console with ImGui
+    //TODO: make an actual console with ImGui/Nuklear
 
-    va_list ap;
-    va_start(ap, fmt);
+    va_list ap1;
+    va_list ap2;
 
-    size_t logMsgSize = vsnprintf(NULL, 0, fmt, ap);
-    char* logMsgBuff = malloc(logMsgSize + 1);
+    va_start(ap1, msgType, fmt);
+    va_copy(ap2, ap1);
+
+    int logMsgBuffSize = vsnprintf(NULL, 0, fmt, ap1);
+    char* logMsgBuff = malloc(logMsgBuffSize + 1);
     if (!logMsgBuff) {
-        printf(ANSI_COLOR_RED "[FATAL] Failed to allocate log message!\n" ANSI_COLOR_RESET);
         return false;
     }
 
-    logMsgBuff[logMsgSize] = '\0';
-    
-    vsprintf(logMsgBuff, fmt, ap);
+    vsprintf(logMsgBuff, fmt, ap2);
 
-    va_end(ap);
+    va_end(ap1);
+    va_end(ap2);
 
     const char* prefix;
 

@@ -1,9 +1,11 @@
 #version 330 core
 out vec4 FragColor;
 
-uniform vec4 honkColor;
+uniform sampler2D iconTex;
+
+in vec2 uv;
 
 void main()
 {
-    FragColor = honkColor;
+    FragColor = texture(iconTex, uv);
 } 

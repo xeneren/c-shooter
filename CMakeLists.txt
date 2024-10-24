@@ -11,6 +11,12 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 
 set(CSHOOTER_ARCH "x86")
 
+if(WIN32)
+    set(CSHOOTER_PLATFORM "Win32")
+elseif(LINUX)
+    set(CSHOOTER_PLATFORM "Linux32")
+endif()
+
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 set(CSHOOTER_ARCH "x64")
@@ -23,28 +29,25 @@ endif()
 
 endif()
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
+add_subdirectory(thirdparty/cglm)
+
+find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL2_image CONFIG REQUIRED)
+
+find_package(unofficial-nuklear CONFIG REQUIRED)
 
 set(CSHOOTER_OUT_DIR "${CMAKE_SOURCE_DIR}/CShooter/bin/${CMAKE_BUILD_TYPE}/${CSHOOTER_PLATFORM}")
 
 set(EXECUTABLE_OUTPUT_PATH ${CSHOOTER_OUT_DIR})
 
-add_subdirectory(thirdparty/cglm)
 
 set(GLAD_SOURCES "ext/glad.c")
 
 set(UFBX_SOURCES "ext/ufbx.c")
 
-set(SOURCES 
-"src/main.c"
-"src/util/string_t.c"
-"src/util/util.c"
-"src/scene/scene.c"
-"src/scene/ent/test_ent/test_ent.c"
- "src/input/input.c")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.c" "src/*.h" "ext/*.c" "ext/*.h")
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${GLAD_SOURCES} ${UFBX_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${GLAD_SOURCES} ${UFBX_SOURCES} "src/nuklear-backend/nuklear_imp.h")
 
 target_include_directories(${PROJECT_NAME} PRIVATE src )
 
@@ -55,3 +58,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE depend )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL2::SDL2)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL2_image::SDL2_image)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE nuklear)
